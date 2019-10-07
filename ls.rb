@@ -9,7 +9,7 @@
 #
 ### データの加工オプション
 # -l ファイルの詳細を表示
-# --full-time タイムスタンプの詳細を表示
+# --full-time タイムスタンプの詳細を表示(未実装)
 # -h(-lh) ファイルサイズの形式をわかりやすい単位で表示する
 # -k(-lk) キロバイト単位で表示
 # -i(-li) ノード番号も含んだ情報を表示する
@@ -69,24 +69,35 @@ class ProcessingOption
 
 	private 
 
-	# 少しだけ実装
+	# permission以外実装
 	def l_option
-		entries = @entries.map{|entry| 
-			entry[:file_type] = nil #ftype(filename)
+		entries = @entries.map{|entry|
+			stat = File::Stat.new(entry[:name])
+			entry[:file_type] = File.ftype(entry[:name]) #ftype(filename)
 			entry[:permission] = nil
-			entry[:num_hardlink] = nil #File::Stat(path).nlink
-			entry[:owner_name] = nil #File::Stat(path).uid
-			entry[:group_name] = nil #File::Stat(path).gid
-			entry[:byte_size] = nil #FileTest.size | File::Stat(path).size
-			entry[:time_stamp] = nil #File.atime(filename) | ctime | utime | mtime
+			entry[:num_hardlink] = stat.nlink #File::Stat(path).nlink
+			entry[:owner_name] = stat.uid #File::Stat(path).uid
+			entry[:group_name] = stat.gid #File::Stat(path).gid
+			entry[:byte_size] = stat.size #FileTest.size | File::Stat(path).size
+			entry[:time_stamp] = stat.atime #File.atime(filename) | ctime | utime | mtime
 			entry
 		}
 	end
 
-	def fulltime_option
-	end
-
 	def h_option
+		entries = @entries.map{|entry|
+			if entry[:byte_size].nil?
+				entry[:byte_size] = File::Stat.new(entry[:name]).size 
+			end
+
+			if entry[:byte_size] > 10**6
+				entry[:byte_size] = "#{entry[:byte_size] / 1000000}G"
+			elsif entry[:byte_size] > 10**3
+				entry[:byte_size] = "#{entry[:byte_size] / 1000}k"
+			end
+				
+			entry
+		}
 	end
 
 	def k_option
