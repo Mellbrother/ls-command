@@ -31,6 +31,12 @@
 # -x 縦方向じゃなくて横方向に並べる
 # -Q 情報をダブルクウォートで囲んで表示する
 # --ignore=PATTERN PATTERNに一致する情報以外の情報を表示する
+# etc.
+#
+### 追加要素
+# -lSなどのオプションに対応できるようにする
+#
+###
 
 class FilterOption
 	def initialize(entries, options)
@@ -160,7 +166,12 @@ class MakeOutput
 				outputs << entry[:byte_size].to_s.rjust(6, ' ')
 				outputs << entry[:time_stamp]
 			end
-			outputs << entry[:name]
+			stat = File::Stat.new(entry[:name])
+			if stat.directory?
+				outputs << "\e[42m#{entry[:name]}\e[0m"
+			else
+				outputs << entry[:name]
+			end
 			entry[:output] = outputs.join(' ')
 		end
 		@entries
@@ -220,7 +231,8 @@ end
 options = ARGV.select{|e| e[0] == '-'}
 options.each do |option|
 	if !implemented_options.include?(option)
-		puts("#{option} is not available")
+		puts("\e[36m#{option} is not available\e[0m")
+		exit
 	end
 end
 
@@ -228,7 +240,7 @@ end
 begin
 	entries = Dir::entries(target).map{|entry| {name: entry}} 
 rescue => error
-	puts("Some options are not needed")
+	puts("\e[36mSome options are not needed\e[0m")
 	exit
 end
 
