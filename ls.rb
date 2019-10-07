@@ -135,7 +135,8 @@ class SortOption
 	end
 
 	def r_option
-		@entries = @entries.to_a.reverse.to_h
+
+		entries = @entries.reverse
 	end
 end
 
