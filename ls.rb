@@ -100,16 +100,12 @@ class ProcessingOption
 		}
 	end
 
-	def k_option
-	end
-
 	def i_option
-		# File::Stat.new(path).ino
+		entries = @entries.map{|entry| 
+			entry[:num_node] = File::Stat.new(entry).ino
+			entry
+		}
 	end
-
-	def large_f_option
-	end
-
 end
 
 class SortOption
@@ -122,13 +118,9 @@ class SortOption
 	end
 
 	def sort
-		if @options.include?('-S')
-			large_s_option
-		elsif @options.include?('-t')
-			t_option
-		else
-			@entries
-		end
+		@entries = large_s_option if @options.include?('-S')
+		@entries =  t_option if @options.include?('-t')
+		@entries = r_option if @options.include?('-r')
 	end
 
 	private 
@@ -142,6 +134,7 @@ class SortOption
 	end
 
 	def r_option
+		entries = @entries.to_a.reverse.to_h
 	end
 end
 
