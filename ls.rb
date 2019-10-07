@@ -145,6 +145,26 @@ class MakeOutput
 		@entries = entries
 		@options = options
 	end
+
+	def make_output
+		@entries.each do |entry|
+			outputs = []
+			if @options.include?('-i')
+				outputs << entry[:num_node]
+			end
+			if @options.include?('-l')
+				outputs << entry[:file_type]
+				outputs << entry[:permission]
+				outputs << entry[:num_hardlink]
+				outputs << entry[:owner_name]
+				outputs << entry[:group_name]
+				outputs << entry[:byte_size]
+				outputs << entry[:time_stamp]
+			end
+			outputs << entry[:name]
+			entry[:outpus] = outputs.join(' ')
+		end
+	end
 end
 
 class OutputOption
@@ -197,6 +217,8 @@ entries = sort_option.sort
 # processing
 processing_option = ProcessingOption.new(entries,options,target)
 entries = processing_option.processing
+
+MakeOutput.new(entries,options)
 
 # output
 output_option = OutputOption.new(entries,options)
