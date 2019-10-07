@@ -162,8 +162,9 @@ class MakeOutput
 				outputs << entry[:time_stamp]
 			end
 			outputs << entry[:name]
-			entry[:outpus] = outputs.join(' ')
+			entry[:output] = outputs.join(' ')
 		end
+		@entries
 	end
 end
 
@@ -177,14 +178,17 @@ class OutputOption
 		if @options.include?('-1' || '-l')
 			return one_option
 		else
-			@entries
+			entries = @entries.map{|entry| entry[:output]}.join(' ')
 		end
 	end
 
 	private 
 
 	def one_option
-		entries = @entries.map{|entry| entry[:output] += "\n"}
+		entries = @entries.map{|entry|
+			"#{entry[:output]}\n"
+		}
+		entries.join('')
 	end
 
 	def m_option
@@ -218,7 +222,8 @@ entries = sort_option.sort
 processing_option = ProcessingOption.new(entries,options,target)
 entries = processing_option.processing
 
-MakeOutput.new(entries,options)
+makeoutput = MakeOutput.new(entries,options)
+entries = makeoutput.make_output
 
 # output
 output_option = OutputOption.new(entries,options)
