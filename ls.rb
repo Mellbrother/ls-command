@@ -43,7 +43,7 @@ class FilterOption
 		if @options.include?('-a')
 			a_option
 		else
-			@entries.select{|e| e[0] != '.'}
+			@entries.select{|entry| entry[:name][0] != '.'}
 		end
 	end
 
@@ -120,7 +120,7 @@ class SortOption
 end
 
 class OutputOption
-	attr_reader :entries, :options
+	#attr_reader :entries, :options
 
 	def initialize(entries, options)
 		@entries = entries
@@ -131,18 +131,19 @@ class OutputOption
 		if @options.include?('-1')
 			return one_option
 		else
-			@entries.join(' ')
+			@entries
 		end
 	end
 
 	private 
 
 	def one_option
-		@entries = @entries.map{|entry| 
-			if entry.include?("\n")
+		entries = @entries.map{|entry| 
+			if entry[:name].include?("\n")
 				entry
 			else
-				"#{entry}\n"
+				entry[:name] += "\n"
+				entry
 			end
 		}
 	end
@@ -160,7 +161,7 @@ end
 options = ARGV.select{|e| e[0] == '-'}
 
 # 表示するファイルまたはディレクトリの集合 entries
-entries = Dir::entries(target)
+entries = Dir::entries(target).map{|entry| [{name: entry}]}
 
 # templete methodなどで処理を固定したほうが良い
 # filter
