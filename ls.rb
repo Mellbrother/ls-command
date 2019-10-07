@@ -121,6 +121,7 @@ class SortOption
 		@entries = large_s_option if @options.include?('-S')
 		@entries =  t_option if @options.include?('-t')
 		@entries = r_option if @options.include?('-r')
+		@entries
 	end
 
 	private 
@@ -134,7 +135,7 @@ class SortOption
 	end
 
 	def r_option
-		entries = @entries.to_a.reverse.to_h
+		@entries = @entries.to_a.reverse.to_h
 	end
 end
 
