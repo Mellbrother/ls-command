@@ -75,21 +75,15 @@ class ProcessingOption
 
 	# 少しだけ実装
 	def l_option
-		entries = @entries.map{|entry| "#{File.size(entry)} #{entry}\n"}
-=begin
-	
-rescue Exception => e
-	
-end
-		entries = @entries.map{|entry|
-			[{num_harding: true,
-			owner: true,
-			name_group: true,
-			size_byte: true,
-			time_stamp: true,
-			name: entry}]
+		entries = @entries.map{|entry| 
+			entry[:file_type] = nil
+			entry[:permission] = nil
+			entry[:owner_name] = nil
+			entry[:group_name] = nil
+			entry[:byte_size] = nil
+			entry[:time_stamp] = nil
+			entry
 		}
-=end
 	end
 
 end
@@ -115,7 +109,9 @@ class SortOption
 
 	def large_s_option
 		@entries = @entries.sort{|a, b| 
-			File.size(File.path("#{@target}/#{a}")) <=> File.size(File.path("#{@target}/#{b}"))}
+			#File.size(File.path("#{@target}/#{a}")) <=> File.size(File.path("#{@target}/#{b}"))}
+			a[:byte_size] <=> b[:byte_size]
+		}
 	end
 end
 
@@ -161,7 +157,7 @@ end
 options = ARGV.select{|e| e[0] == '-'}
 
 # 表示するファイルまたはディレクトリの集合 entries
-entries = Dir::entries(target).map{|entry| [{name: entry}]}
+entries = Dir::entries(target).map{|entry| {name: entry}} 
 
 # templete methodなどで処理を固定したほうが良い
 # filter
@@ -169,15 +165,15 @@ filter_option = FilterOption.new(entries,options)
 entries = filter_option.filter
 
 # sort
-sort_option = SortOption.new(entries,options,target)
-entries = sort_option.sort
+#sort_option = SortOption.new(entries,options,target)
+#entries = sort_option.sort
 
 # processing
 processing_option = ProcessingOption.new(entries,options,target)
 entries = processing_option.processing
 
 # output
-output_option = OutputOption.new(entries,options)
-entries = output_option.output
+#output_option = OutputOption.new(entries,options)
+#entries = output_option.output
 
 puts entries
