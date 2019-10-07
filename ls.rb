@@ -191,6 +191,24 @@ class OutputOption
 	end
 end
 
+class TempleteLS
+	def initialize(entries, options)
+		@entries = entries
+		@options = options
+	end
+
+	def execute_ls
+		@entries = FilterOption.new(@entries,@options).filter
+		@entries = SortOption.new(@entries,@options).sort
+		@entries = FilterOption.new(@entries,@options).filter
+		@entries = ProcessingOption.new(@entries,@options).processing
+		@entries = MakeOutput.new(@entries,@options).make_output
+		@entries = OutputOption.new(@entries,@options).output
+		@entries
+	end
+end
+
+implemented_options = ['-a', '-l', '-1', '-r', '-t', '-S', '-h', '-i']
 
 # lsで表示するディレクトリ target
 target = Dir.pwd
@@ -200,28 +218,18 @@ end
 
 # 与えられたオプション options
 options = ARGV.select{|e| e[0] == '-'}
+options.each do |option|
+	if !implemented_options.include?(option)
+		puts("#{option} is not available")
+	end
+end
 
 # 表示するファイルまたはディレクトリの集合 entries
-entries = Dir::entries(target).map{|entry| {name: entry}} 
+begin
+	entries = Dir::entries(target).map{|entry| {name: entry}} 
+rescue => error
+	puts("Some options are not needed")
+	exit
+end
 
-# templete methodなどで処理を固定したほうが良い
-# filter
-filter_option = FilterOption.new(entries,options)
-entries = filter_option.filter
-
-# sort
-sort_option = SortOption.new(entries,options)
-entries = sort_option.sort
-
-# processing
-processing_option = ProcessingOption.new(entries,options)
-entries = processing_option.processing
-
-makeoutput = MakeOutput.new(entries,options)
-entries = makeoutput.make_output
-
-# output
-output_option = OutputOption.new(entries,options)
-entries = output_option.output
-
-puts entries
+puts TempleteLS.new(entries,options).execute_ls
