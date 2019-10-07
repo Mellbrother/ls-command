@@ -1,7 +1,8 @@
 #! /user/bin/env ruby
 #
-# ls : 引数なしの場合、現在のディレクトリーの状態を返す
-#    : 引数ありの場合、そのディレクトリーの状態を返す
+### ls
+# : 引数なしの場合、現在のディレクトリーの状態を返す
+# : 引数ありの場合、そのディレクトリーの状態を返す
 #
 ### フィルターオプション
 # -a 全てのファイルやディレクトリを表示
@@ -23,7 +24,7 @@
 #
 ### 出力を変えるオプション
 # -1 1行に1件表示する
-# -m 情報をカンマ区切りで表示する
+# -m 情報をカンマ区切りで表示する(未実装)
 #
 ### +α
 # -d ディレクトリ自体の情報を表示する
@@ -53,73 +54,64 @@ class FilterOption
 end
 
 class ProcessingOption
-	def initialize(entries, options, target)
+	def initialize(entries, options)
 		@entries = entries
 		@options = options
-		@target = target
 	end
 
 	def processing
-		if @options.include?('-l')
-			return l_option
-		else
-			@entries
-		end
+		l_option if @options.include?('-l')
+		h_option if @options.include?('-h')
+		i_option if @options.include?('-i')
+		@entries
 	end
 
 	private 
 
 	# permission以外実装
 	def l_option
-		entries = @entries.map{|entry|
+		@entries.each do |entry|
 			stat = File::Stat.new(entry[:name])
-			entry[:file_type] = File.ftype(entry[:name]) #ftype(filename)
-			entry[:permission] = nil
-			entry[:num_hardlink] = stat.nlink #File::Stat(path).nlink
-			entry[:owner_name] = stat.uid #File::Stat(path).uid
-			entry[:group_name] = stat.gid #File::Stat(path).gid
-			entry[:byte_size] = stat.size #FileTest.size | File::Stat(path).size
-			entry[:time_stamp] = stat.atime #File.atime(filename) | ctime | utime | mtime
-			entry
-		}
+			entry[:file_type] = 'f' if stat.file?
+			entry[:file_type] = 'd' if stat.directory?
+			#entry[:permission] = nil
+			entry[:num_hardlink] = stat.nlink
+			entry[:owner_name] = stat.uid
+			entry[:group_name] = stat.gid
+			entry[:byte_size] = stat.size
+			entry[:time_stamp] = stat.mtime
+		end
 	end
 
 	def h_option
-		entries = @entries.map{|entry|
+		@entries.each do |entry|
 			if entry[:byte_size].nil?
 				entry[:byte_size] = File::Stat.new(entry[:name]).size 
 			end
-
 			if entry[:byte_size] > 10**6
-				entry[:byte_size] = "#{entry[:byte_size] / 1000000}G"
+				entry[:byte_size] = "#{(entry[:byte_size] / 1000000).to_f.round(2)}G"
 			elsif entry[:byte_size] > 10**3
-				entry[:byte_size] = "#{entry[:byte_size] / 1000}k"
-			end
-				
-			entry
-		}
+				entry[:byte_size] = "#{(entry[:byte_size] / 1000).to_f.round(2)}k"
+			end	
+		end
 	end
 
 	def i_option
-		entries = @entries.map{|entry| 
-			entry[:num_node] = File::Stat.new(entry).ino
-			entry
-		}
+		@entries.each do |entry| 
+			entry[:num_node] = File::Stat.new(entry[:name]).ino
+		end
 	end
 end
 
 class SortOption
-	attr_reader :entries, :options, :target
-
-	def initialize(entries, options, target)
+	def initialize(entries, options)
 		@entries = entries
 		@options = options
-		@target = target
 	end
 
 	def sort
 		@entries = large_s_option if @options.include?('-S')
-		@entries =  t_option if @options.include?('-t')
+		@entries = t_option if @options.include?('-t')
 		@entries = r_option if @options.include?('-r')
 		@entries
 	end
@@ -127,16 +119,23 @@ class SortOption
 	private 
 
 	def large_s_option
-		@entries = @entries.sort{|a, b| a[:byte_size] <=> b[:byte_size]}
+		@entries.each do |entry|
+			stat = File::Stat.new(entry[:name])
+			entry[:byte_size] = stat.size
+		end
+		@entries.sort{|a, b| b[:byte_size] <=> a[:byte_size]}
 	end
 
 	def t_option
-		@entries = @entries.sort{|a, b| a[:time_stamp] <=> b[:time_stamp]}
+		@entries.each do |entry|
+			stat = File::Stat.new(entry[:name])
+			entry[:time_stamp] = stat.mtime
+		end
+		@entries.sort{|a, b| b[:time_stamp] <=> a[:time_stamp]}
 	end
 
 	def r_option
-
-		entries = @entries.reverse
+		@entries.reverse
 	end
 end
 
@@ -154,11 +153,11 @@ class MakeOutput
 			end
 			if @options.include?('-l')
 				outputs << entry[:file_type]
-				outputs << entry[:permission]
+				#outputs << entry[:permission]
 				outputs << entry[:num_hardlink]
 				outputs << entry[:owner_name]
 				outputs << entry[:group_name]
-				outputs << entry[:byte_size]
+				outputs << entry[:byte_size].to_s.rjust(6, ' ')
 				outputs << entry[:time_stamp]
 			end
 			outputs << entry[:name]
@@ -175,10 +174,10 @@ class OutputOption
 	end
 
 	def output
-		if @options.include?('-1' || '-l')
-			return one_option
+		if @options.include?('-1') || @options.include?('-l')
+			one_option
 		else
-			entries = @entries.map{|entry| entry[:output]}.join(' ')
+			@entries.map{|entry| entry[:output]}.join(' ')
 		end
 	end
 
@@ -190,10 +189,6 @@ class OutputOption
 		}
 		entries.join('')
 	end
-
-	def m_option
-	end
-
 end
 
 
@@ -215,11 +210,11 @@ filter_option = FilterOption.new(entries,options)
 entries = filter_option.filter
 
 # sort
-sort_option = SortOption.new(entries,options,target)
+sort_option = SortOption.new(entries,options)
 entries = sort_option.sort
 
 # processing
-processing_option = ProcessingOption.new(entries,options,target)
+processing_option = ProcessingOption.new(entries,options)
 entries = processing_option.processing
 
 makeoutput = MakeOutput.new(entries,options)
