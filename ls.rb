@@ -3,37 +3,35 @@
 # ls : 引数なしの場合、現在のディレクトリーの状態を返す
 #    : 引数ありの場合、そのディレクトリーの状態を返す
 #
-# フィルターオプション
+### フィルターオプション
 # -a 全てのファイルやディレクトリを表示
 # -R 再帰的にディレクトリの中身も表示する
 #
-# データの加工オプション
+### データの加工オプション
 # -l ファイルの詳細を表示
 # --full-time タイムスタンプの詳細を表示
 # -h(-lh) ファイルサイズの形式をわかりやすい単位で表示する
 # -k(-lk) キロバイト単位で表示
 # -i(-li) ノード番号も含んだ情報を表示する
-# -F 名前の後ろにファイル識別子をつける
+# -F 名前の後ろにファイル識別子をつける(未実装)
 #
-# ソートするオプション
+### ソートするオプション
 # -r(-lr) 逆順に表示する
 # -t(-tl) 更新時間順に表示する
 # -l(-lS) ファイルサイズ順に表示する
-# -X(-lX) 拡張子のアルファベット順に表示する
+# -X(-lX) 拡張子のアルファベット順に表示する(未実装)
 #
-# 出力を変えるオプション
+### 出力を変えるオプション
 # -1 1行に1件表示する
 # -m 情報をカンマ区切りで表示する
 #
-# +α
+### +α
 # -d ディレクトリ自体の情報を表示する
 # -x 縦方向じゃなくて横方向に並べる
 # -Q 情報をダブルクウォートで囲んで表示する
 # --ignore=PATTERN PATTERNに一致する情報以外の情報を表示する
 
 class FilterOption
-	#attr_reader :entries, :options
-
 	def initialize(entries, options)
 		@entries = entries
 		@options = options
@@ -55,8 +53,6 @@ class FilterOption
 end
 
 class ProcessingOption
-	#attr_reader :entries, :options, :target
-
 	def initialize(entries, options, target)
 		@entries = entries
 		@options = options
@@ -76,14 +72,31 @@ class ProcessingOption
 	# 少しだけ実装
 	def l_option
 		entries = @entries.map{|entry| 
-			entry[:file_type] = nil
+			entry[:file_type] = nil #ftype(filename)
 			entry[:permission] = nil
-			entry[:owner_name] = nil
-			entry[:group_name] = nil
-			entry[:byte_size] = nil
-			entry[:time_stamp] = nil
+			entry[:num_hardlink] = nil #File::Stat(path).nlink
+			entry[:owner_name] = nil #File::Stat(path).uid
+			entry[:group_name] = nil #File::Stat(path).gid
+			entry[:byte_size] = nil #FileTest.size | File::Stat(path).size
+			entry[:time_stamp] = nil #File.atime(filename) | ctime | utime | mtime
 			entry
 		}
+	end
+
+	def fulltime_option
+	end
+
+	def h_option
+	end
+
+	def k_option
+	end
+
+	def i_option
+		# File::Stat.new(path).ino
+	end
+
+	def large_f_option
 	end
 
 end
@@ -99,7 +112,9 @@ class SortOption
 
 	def sort
 		if @options.include?('-S')
-			return large_s_option
+			large_s_option
+		elsif @options.include?('-t')
+			t_option
 		else
 			@entries
 		end
@@ -108,23 +123,32 @@ class SortOption
 	private 
 
 	def large_s_option
-		@entries = @entries.sort{|a, b| 
-			#File.size(File.path("#{@target}/#{a}")) <=> File.size(File.path("#{@target}/#{b}"))}
-			a[:byte_size] <=> b[:byte_size]
-		}
+		@entries = @entries.sort{|a, b| a[:byte_size] <=> b[:byte_size]}
+	end
+
+	def t_option
+		@entries = @entries.sort{|a, b| a[:time_stamp] <=> b[:time_stamp]}
+	end
+
+	def r_option
+	end
+end
+
+class MakeOutput
+	def initialize(entries, options)
+		@entries = entries
+		@options = options
 	end
 end
 
 class OutputOption
-	#attr_reader :entries, :options
-
 	def initialize(entries, options)
 		@entries = entries
 		@options = options
 	end
 
 	def output
-		if @options.include?('-1')
+		if @options.include?('-1' || '-l')
 			return one_option
 		else
 			@entries
@@ -134,14 +158,10 @@ class OutputOption
 	private 
 
 	def one_option
-		entries = @entries.map{|entry| 
-			if entry[:name].include?("\n")
-				entry
-			else
-				entry[:name] += "\n"
-				entry
-			end
-		}
+		entries = @entries.map{|entry| entry[:output] += "\n"}
+	end
+
+	def m_option
 	end
 
 end
@@ -165,15 +185,15 @@ filter_option = FilterOption.new(entries,options)
 entries = filter_option.filter
 
 # sort
-#sort_option = SortOption.new(entries,options,target)
-#entries = sort_option.sort
+sort_option = SortOption.new(entries,options,target)
+entries = sort_option.sort
 
 # processing
 processing_option = ProcessingOption.new(entries,options,target)
 entries = processing_option.processing
 
 # output
-#output_option = OutputOption.new(entries,options)
-#entries = output_option.output
+output_option = OutputOption.new(entries,options)
+entries = output_option.output
 
 puts entries
